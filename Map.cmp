@@ -1,0 +1,29 @@
+<aura:component controller="SGMaps" implements="force:appHostable,force:hasSObjectName,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global" >
+	
+    <!-- Load the leaflet library (http://leafletjs.com for details) -->
+    <ltng:require styles="/resource/leaflet/leaflet.css, /resource/leaflet/leaflet.fullscreen.css, /resource/leaflet/L.Control.ZoomBox.css, /resource/leaflet/L.Control.Shapefile.css" 
+                  scripts="/resource/leaflet/leaflet.js, /resource/leaflet/Leaflet.fullscreen.min.js, /resource/leaflet/L.Control.ZoomBox.js, /resource/leaflet/L.Control.Shapefile.js"
+             	  afterScriptsLoaded="{!c.jsLoaded}" />    
+    <!-- upload shape files -->
+    <!-- https://github.com/consbio/L.Control.Shapefile/blob/master/README.md -->
+    <!-- The Leaflet map object -->
+    <aura:attribute name="ObjectName" type="String" default="{!v.sObjectName}"/>
+    <aura:attribute name="map" type="Object"/>
+    <aura:attribute name="record" type="Object"/>
+    <aura:attribute name="simpleRecord" type="Object"/>
+    <aura:attribute name="recordId" type="Id"/>
+    <aura:attribute name="MyData" type="String[]" />
+    <aura:attribute name="GetMyData" type="String" />
+
+    
+    <force:recordData aura:id="recordLoader"
+                      recordId="{!v.recordId}"
+                      layoutType="FULL"
+                      targetRecord="{!v.record}"
+                      targetFields="{!v.simpleRecord}"
+                      />
+    
+    <div aura:id="map" style="height: 600px; z-index: 1;">
+
+        </div>
+</aura:component>
