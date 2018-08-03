@@ -1,0 +1,136 @@
+public class SGMaps {
+
+  public static Map < String, object > MyMappedData = new Map < String, object > {};
+  public static List < String > Well_features = new List < String > ();
+  public static List < String > Site_features = new List < String > ();
+  public static List < String > Unit_features = new List < String > (); 
+    //need to build in StartingPoint and Zoom Level
+  @AuraEnabled
+  public static Map < String, object > getRelatedItems(String recordId, String SourceObject) {
+    String ObjectName;
+    String tRecordId;
+    String StartPoint;
+    String UID;
+    String GeoStartingPoint;
+
+    Site__c[] vSite;
+    Well__c[] vWell;
+    Unit__c[] vUnit;
+    Tract__c[] vTract;
+    INT_GIS_JOIN_Site_to_Well__c[] vSiteWell;
+    INT_GIS_JOIN_Unit_to_Tract__c[] vUnitTract;
+    INT_GIS_JOIN_Well_to_Unit__c[] VWellUnit;
+
+
+
+
+
+    switch on SourceObject {
+      when 'Site__c' {
+
+        UID = [select site_UID__c FROM Site__c where id =: recordId].site_UID__c;
+        GeoStartingPoint =  [select GIS_Start_Point__c FROM Site__c where id =: recordId].GIS_Start_Point__c;
+          
+        getSite(UID); // Single Record
+          // --BUILD Wells
+        vSiteWell = [select Site_UID__c, Well_UID__c from INT_GIS_JOIN_Site_to_Well__c];
+
+        for (Integer i = 0; i < vSiteWell.size(); i++) {
+         if (vSiteWell[i].Site_UID__c == UID) {
+            getWell(vSiteWell[i].Well_UID__c);
+             // --BUILD Units
+              VWellUnit = [select Unit_UID__c from INT_GIS_JOIN_Well_to_Unit__c where Well_UID__c =: vSiteWell[i].Well_UID__c ];
+
+        for (Integer u = 0; u < VWellUnit.size(); u++) {
+           
+            getUnit(VWellUnit[u].Unit_UID__c);
+            vUnitTract = [select Tract_UID__c from INT_GIS_JOIN_Unit_to_Tract__c where  Unit_UID__c =: VWellUnit[u].Unit_UID__c];
+            for (Integer t = 0; t < vUnitTract.size(); t++) {
+                getTracts(vUnitTract[t].Tract_UID__c);
+                
+            }
+            
+        }
+          // -- END Unit
+         }
+        }
+          // -- END Well
+          
+       
+      
+      }
+
+    }
+
+    myMappedData.put('Well_features', Well_features);
+    myMappedData.put('Site_features', Site_features);
+    myMappedData.put('Unit_features', Unit_features);
+      myMappedData.put('StartPoint', GeoStartingPoint);
+   //  myMappedData.put('GeoStartingPoint', GeoStartingPoint);  
+      
+
+    //vSite = [SELECT GIS_GEODATA__c, GIS_Start_Point__c, Site_UID__c FROM Site__c where Site_UID__c != NULL LIMIT 5];
+    //vWell = [SELECT GIS_GEODATA__c, GIS_UID__c FROM Well__c where GIS_UID__c != NULL LIMIT 5];
+    //vUnit = [SELECT GIS_GEODATA__c, GIS_UID__c FROM Unit__c where GIS_UID__c != NULL LIMIT 5];
+    //vTract = [SELECT GIS_GEODATA__c, GIS_UID__c FROM Tract__c where GIS_UID__c != NULL LIMIT 5];
+
+    //MyMappedData.put('RecordId', recordId);
+
+    //MyMappedData.put('Site', vSite);
+    //MyMappedData.put('Well', vWell);
+    //MyMappedData.put('Unit', vUnit);
+  //  MyMappedData.put('Tract', vTract);
+
+
+
+
+    return MyMappedData;
+  }
+
+  static void getWell(String UID) {
+    String GeoData = [select GIS_GEODATA__c FROM Well__c where GIS_UID__c =: UID].GIS_GEODATA__c;
+    String WellName = [select Name FROM Well__c where GIS_UID__c =: UID].Name;
+    GeoData = GeoData.replace(', ', '],[');
+    GeoData = GeoData.replace(' ', ', ');
+    Well_features.add('|{ "type": "Feature", "id" : "' + UID + ' ", "properties": {"category":"Well", "name" : "' + WellName + '", "fill": "#555555", "fill-opacity": 0.5, "stroke": "#555555", "stroke-width": 2, "stroke-opacity": 1 } , "geometry": { "type" : "LineString", "coordinates" : [[' + GeoData + ']] }}|');
+   // Well_features.add(Well_GeoJson);
+  }
+    
+  static void getSite(String UID) {
+    String GeoData = [select GIS_GEODATA__c FROM Site__c where Site_UID__c =: UID].GIS_GEODATA__c;
+    String SiteName = [select Name FROM Site__c where Site_UID__c =: UID].Name;
+    GeoData = GeoData.replace(', ', '],[');
+    GeoData = GeoData.replace(' ', ', ');
+    Site_features.add('|{ "type": "Feature", "id" : "' + UID + ' " , "geometry": { "type" : "Point", "coordinates" : [' + GeoData + '] }, "properties": {"category":"Sites", "name" : "' + SiteName + '"} }|');
+   // Well_features.add(Well_GeoJson);
+  }
+    
+
+  static void getTracts(String UID) {
+    String GeoData = [select GIS_GEODATA__c FROM Tract__c where GIS_UID__c =: UID].GIS_GEODATA__c;
+    String SiteName = [select Name FROM Tract__c where GIS_UID__c =: UID].Name;
+    GeoData = GeoData.replace(', ', '],[');
+    GeoData = GeoData.replace(' ', ', ');
+    Site_features.add('|{ "type": "Feature", "id" : "' + UID + ' " , "geometry": { "type" : "Polygon", "coordinates" : [' + GeoData + '] }, "properties": {"category":"Sites", "name" : "' + SiteName + '"} }|');
+   // Well_features.add(Well_GeoJson);
+  }
+    
+  static void getUnit(String UID) {
+    String GeoData = [select GIS_GEODATA__c FROM Unit__c where GIS_UID__c =: UID].GIS_GEODATA__c;
+    String UnitUID = [select GIS_UID__c FROM Unit__c where GIS_UID__c =: UID].GIS_UID__c;
+    String SiteName = [select Name FROM Unit__c where GIS_UID__c =: UID].Name;
+      if (!Unit_features.contains(UnitUID)){
+      
+    GeoData = GeoData.replace(', ', '],[');
+    GeoData = GeoData.replace(' ', ', ');
+          Unit_features.add('|{ "type": "Feature", "id" : "' + UID + ' ", "properties": {"category":"Unit", "name" : "' + SiteName + '", "fill": "#555555", "fill-opacity": 0.5, "stroke": "#555555", "stroke-width": 2, "stroke-opacity": 1 } , "geometry": { "type" : "Polygon", "coordinates" : [[[' + GeoData + ']]] }  }|');
+      }
+   // Well_features.add(Well_GeoJson);
+   // styling
+   // https://stackoverflow.com/questions/33465650/leaflet-how-to-style-2000-points-in-a-geojson-object-with-no-style-properties
+   // https://jsfiddle.net/69nkmdyw/2/
+  }
+
+
+
+}
